@@ -1,0 +1,48 @@
+# APG (Automatic Problem Generation) variables.
+# Each variable below is generated once per sandbox, is injected into
+# Ansible as a variable of the same name during provisioning, and is used
+# as the "Correct Answer - Variable Name" of one training level.
+# See: https://docs.crp.kypo.muni.cz/user-guide-advanced/sandboxes/apg-variables/
+#
+# NOTE: the "username" type generates a short random alphanumeric string
+# (no spaces, no punctuation). It is reused here as a generic random-token
+# generator, not because the value represents an actual username, so that
+# the token is safe to store in a SQL column and easy to type back as an
+# answer.
+
+# Task 1 - planted into Alice's NickName column.
+secret_task1:
+  type: username
+  length: 10
+
+# Task 2.1 - planted into Admin's NickName column (exploited from the
+# login webpage).
+secret_task2a:
+  type: username
+  length: 10
+
+# Task 2.2 - planted into Admin's Email column (exploited from the
+# command line with curl, so the student must repeat the attack).
+secret_task2b:
+  type: username
+  length: 10
+
+# Task 3.1 - the exact salary the student must set for their own
+# account (Alice) through the UPDATE-statement injection.
+target_salary_self:
+  type: port
+  min: 150000
+  max: 399999
+  prohibited: [400000]
+
+# Task 3.2 - the exact salary the student must set for Boby's account.
+target_salary_boby:
+  type: port
+  min: 2
+  max: 9999
+
+# Task 3.3 - the exact new password the student must set for Boby's
+# account, then use to log in as Boby.
+target_password_boby:
+  type: password
+  length: 10

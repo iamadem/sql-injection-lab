@@ -1,0 +1,121 @@
+---
+# ---------------------------------------------------------------------------
+# 1. Base packages and Docker
+# ---------------------------------------------------------------------------
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install base packages
+  apt:
+    name:
+      - docker.io
+      - docker-compose
+      - unzip
+      - net-tools
+      - mysql-client
+      - curl
+      - nano
+      - vim
+    state: present
+
+- name: Ensure docker service is enabled and running
+  systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Add student user to the docker group
+  user:
+    name: user
+    groups: docker
+    append: true
+
+# ---------------------------------------------------------------------------
+# 2. Resolve www.seed-server.com, exactly as the lab's PDF instructs
+# ---------------------------------------------------------------------------
+- name: Map www.seed-server.com to the web container
+  lineinfile:
+    path: /etc/hosts
+    line: "10.9.0.5 www.seed-server.com"
+    create: true
+
+# ---------------------------------------------------------------------------
+# 3. Deploy the official SEED Labsetup (bundled locally, no download needed)
+# ---------------------------------------------------------------------------
+- name: Copy the Labsetup folder to the student's home directory
+  copy:
+    src: Labsetup/
+    dest: /home/user/Labsetup/
+    owner: user
+    group: user
+    mode: "0755"
+
+- name: Build the lab containers (docker-compose build)
+  shell: docker-compose build
+  args:
+    chdir: /home/user/Labsetup
+  become: true
+  become_user: user
+
+- name: Start the lab containers (docker-compose up -d)
+  shell: docker-compose up -d
+  args:
+    chdir: /home/user/Labsetup
+  become: true
+  become_user: user
+
+# ---------------------------------------------------------------------------
+# 4. Wait for MySQL to be ready before touching the data
+# ---------------------------------------------------------------------------
+- name: Wait for the MySQL container to accept connections
+  shell: >
+    docker exec mysql-10.9.0.6
+    mysql -uroot -pdees -e "SELECT 1;" sqllab_users
+  register: mysql_ready
+  until: mysql_ready.rc == 0
+  retries: 30
+  delay: 5
+  changed_when: false
+
+# ---------------------------------------------------------------------------
+# 5. Plant the per-sandbox secrets used as flags for Tasks 1 and 2
+# ---------------------------------------------------------------------------
+- name: Plant Task 1 secret into Alice's NickName
+  shell: >
+    docker exec mysql-10.9.0.6
+    mysql -uroot -pdees sqllab_users -e
+    "UPDATE credential SET NickName='{{ secret_task1 }}' WHERE Name='Alice';"
+  changed_when: true
+
+- name: Plant Task 2.1 secret into Admin's NickName
+  shell: >
+    docker exec mysql-10.9.0.6
+    mysql -uroot -pdees sqllab_users -e
+    "UPDATE credential SET NickName='{{ secret_task2a }}' WHERE Name='Admin';"
+  changed_when: true
+
+- name: Plant Task 2.2 secret into Admin's Email
+  shell: >
+    docker exec mysql-10.9.0.6
+    mysql -uroot -pdees sqllab_users -e
+    "UPDATE credential SET Email='{{ secret_task2b }}' WHERE Name='Admin';"
+  changed_when: true
+
+# ---------------------------------------------------------------------------
+# 6. Write the per-sandbox targets for Task 3 (UPDATE-statement injection)
+# ---------------------------------------------------------------------------
+- name: Write the Task 3 target values for the student
+  copy:
+    dest: /home/user/task3_targets.txt
+    owner: user
+    group: user
+    mode: "0644"
+    content: |
+      Task 3.1 - set Alice's (your own) salary to exactly: {{ target_salary_self }}
+      Task 3.2 - set Boby's salary to exactly:             {{ target_salary_boby }}
+      Task 3.3 - set Boby's password to exactly:           {{ target_password_boby }}
+
+      These three values are unique to your sandbox. Submit each one as the
+      answer to the matching level once you have made the change.

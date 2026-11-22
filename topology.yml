@@ -1,0 +1,38 @@
+name: sqli-seed-lab
+
+# ASSUMPTION: plain Ubuntu 20.04 cloud image -> default cloud-init management
+# user is "ubuntu". Change mgmt_user below if your image catalog uses a
+# different account (for example "debian" or "seed").
+hosts:
+  - name: seed
+    base_box:
+      image: Ubuntu 20.04 VM
+      mgmt_user: ubuntu
+    flavor: m1.medium
+
+routers:
+  - name: router
+    base_box:
+      image: debian-12-x86_64
+      mgmt_user: debian
+    flavor: standard.small
+
+wan:
+  name: internet-connection
+  cidr: 100.100.100.0/24
+
+networks:
+  - name: seed-switch
+    cidr: 10.1.26.0/24
+
+net_mappings:
+  - host: seed
+    network: seed-switch
+    ip: 10.1.26.5
+
+router_mappings:
+  - router: router
+    network: seed-switch
+    ip: 10.1.26.1
+
+groups: []

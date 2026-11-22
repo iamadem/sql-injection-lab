@@ -1,0 +1,28 @@
+This scenario adapts practical work (TP) content from:
+
+  SEED Labs - SQL Injection Attack Lab
+  Copyright (c) 2006 - 2020 by Wenliang Du
+  Licensed under CC BY-NC-SA 4.0:
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+  https://seedsecuritylabs.org / https://github.com/seed-labs/seed-labs
+
+The provisioning/roles/seed_lab/files/Labsetup/ folder bundled in this
+scenario is an unmodified copy of the lab's "Labsetup" folder from the
+public seed-labs/seed-labs GitHub repository
+(category-web/Web_SQL_Injection/Labsetup).
+
+If you remix, transform, or build upon this material, this copyright
+notice must be left intact, or reproduced in a way that is reasonable to
+the medium in which the work is being re-published, per the original
+license.
+
+---
+
+The scenario structure (topology.yml, training.json layout, provisioning
+conventions) is based on the "library-junior-hacker" CyberRange CZ
+scenario by Miriam Galikova / Masaryk University, used here only as a
+structural template (see that project's own LICENSE/ATTRIBUTION for its
+terms).
+
+The provisioning/roles/user-access/ role is an unmodified copy of:
+  https://github.com/cyberrangecz/ansible-role-user-access (v1.0.0)

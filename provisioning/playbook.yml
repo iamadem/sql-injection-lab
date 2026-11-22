@@ -1,0 +1,16 @@
+---
+# Provisioning for the SQL Injection Attack Lab (SEED Labs), single host.
+# No provisioning/requirements.yml is used: every role is included locally
+# under provisioning/roles/ so no Ansible Galaxy / GitHub download is
+# needed at provisioning time.
+
+- name: Configure the seed host
+  hosts: seed
+  become: true
+  roles:
+    - role: user-access
+      user_access_username: user
+      user_access_password: Password123
+      user_access_sudo: true
+
+    - role: seed_lab

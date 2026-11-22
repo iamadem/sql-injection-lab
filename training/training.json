@@ -1,0 +1,312 @@
+{
+  "title": "SQL Injection Attack Lab - System Security TP",
+  "description": "Practical work (TP) based on the SEED Labs \"SQL Injection Attack Lab\". Students exploit SQL injection vulnerabilities in a vulnerable employee-management web application (SELECT and UPDATE statements), then fix the vulnerability with a prepared statement.",
+  "prerequisites": [
+    "Basic SQL (SELECT, UPDATE, WHERE)",
+    "Basic Linux command line and SSH",
+    "Basic HTTP (GET requests, URL encoding)"
+  ],
+  "outcomes": [
+    "Understand how SQL injection vulnerabilities arise from unsanitized input.",
+    "Exploit SQL injection in a SELECT statement to bypass authentication.",
+    "Exploit SQL injection in an UPDATE statement to modify unauthorized data.",
+    "Explain why stacked queries are blocked in this setup.",
+    "Fix a SQL injection vulnerability using prepared statements."
+  ],
+  "state": "UNRELEASED",
+  "show_stepper_bar": true,
+  "levels": [
+    {
+      "title": "Introduction",
+      "level_type": "INFO_LEVEL",
+      "order": 0,
+      "estimated_duration": 2,
+      "minimal_possible_solve_time": null,
+      "content": "# SQL Injection Attack Lab\n\nThis training is based on the **SEED Labs \"SQL Injection Attack Lab\"** (copyright (c) 2006-2020 Wenliang Du, CC BY-NC-SA 4.0), used here as the practical work (TP) of the System Security course.\n\nYou will attack a vulnerable Employee Management web application (`www.seed-server.com`) running in Docker containers on your sandbox, then fix the vulnerability using prepared statements.\n\n**Rules**\n- Every level has its own flag. Flags are unique to your sandbox: do not share them, and do not accept flags from another student.\n- Using a hint costs points (shown on each level). Viewing the solution also costs points on most levels.\n- The scenario is graded out of **20 points**.\n- This is an educational exercise. Do not use these techniques outside of this sandbox.\n"
+    },
+    {
+      "title": "Get Access",
+      "level_type": "ACCESS_LEVEL",
+      "order": 1,
+      "estimated_duration": 3,
+      "minimal_possible_solve_time": null,
+      "passkey": "start",
+      "cloud_content": "Connect to your sandbox, then submit **`start`**.\n\n### Sandbox access\n1. In the topology overview, right-click on **`seed`** and choose **Open GUI**, or connect over SSH as user **`user`** with password **`Password123`**.\n2. The web application and its MySQL database are already built and running as Docker containers on this machine (`docker-compose ps` inside `~/Labsetup` to check).\n3. The application is reachable at `http://www.seed-server.com` from inside the sandbox.\n4. Your personal targets for Task 3 are in `~/task3_targets.txt`.",
+      "local_content": "This sandbox has not been tested for use with local sandbox."
+    },
+    {
+      "title": "Task 1 - Get familiar with SQL statements",
+      "level_type": "TRAINING_LEVEL",
+      "order": 2,
+      "estimated_duration": 5,
+      "minimal_possible_solve_time": null,
+      "answer": null,
+      "answer_variable_name": "secret_task1",
+      "content": "Get a shell on the MySQL container and query the database directly.\n\n```\n$ docker exec -it mysql-10.9.0.6 mysql -u root -pdees\n```\n\nThe database is called `sqllab_users` and contains one table, `credential`. Load it and print **all profile information of the employee Alice**.\n\n```\nmysql> use sqllab_users;\nmysql> show tables;\n```\n\nThe flag for this level is the value stored in Alice's **NickName** column.",
+      "solution": "```\ndocker exec -it mysql-10.9.0.6 mysql -u root -pdees\nmysql> use sqllab_users;\nmysql> SELECT * FROM credential WHERE Name='Alice';\n```\nThe flag is the value in the `NickName` column of that row.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "How do I connect to MySQL?",
+          "content": "Get a shell on the MySQL container with `docker exec -it mysql-10.9.0.6 mysql -u root -pdees`.",
+          "hint_penalty": 0.5,
+          "order": 0
+        },
+        {
+          "title": "Which SQL statement do I need?",
+          "content": "Use `SELECT * FROM credential WHERE Name='Alice';` after `USE sqllab_users;`.",
+          "hint_penalty": 1.0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 1.5,
+      "variant_answers": true,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Task 2.1 - SQL injection on SELECT (webpage)",
+      "level_type": "TRAINING_LEVEL",
+      "order": 3,
+      "estimated_duration": 10,
+      "minimal_possible_solve_time": null,
+      "answer": null,
+      "answer_variable_name": "secret_task2a",
+      "content": "Open `http://www.seed-server.com` and look at the login page. The backend (`unsafe_home.php`) builds this query from your input:\n\n```php\n$sql = \"SELECT id, name, eid, salary, birth, ssn, address, email,\n        nickname, Password FROM credential\n        WHERE name='$input_uname' and Password='$hashed_pwd'\";\n```\n\nYou know the administrator's account name (`admin`) but not the password. Log in as `admin` **without knowing the password**, using SQL injection in the login form.\n\nThe flag for this level is the value shown in the **NickName** field of the resulting profile.",
+      "solution": "Username: `admin`\nPassword: `' or 1=1 -- -` (or `' OR '1'='1` as the password field)\n\nThis turns the query's WHERE clause into something that is always true for the `admin` row, bypassing the password check entirely.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Where is the vulnerability?",
+          "content": "The password field is concatenated directly into the SQL string with no escaping - look at the WHERE clause.",
+          "hint_penalty": 0.5,
+          "order": 0
+        },
+        {
+          "title": "What should the password field contain?",
+          "content": "Make the condition `Password='...'` always true, for example by injecting `' or 1=1 -- -`.",
+          "hint_penalty": 1.0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 2.5,
+      "variant_answers": true,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Task 2.2 - SQL injection from the command line (curl)",
+      "level_type": "TRAINING_LEVEL",
+      "order": 4,
+      "estimated_duration": 10,
+      "minimal_possible_solve_time": null,
+      "answer": null,
+      "answer_variable_name": "secret_task2b",
+      "content": "Repeat the Task 2.1 attack **without using the webpage**, using `curl` to send the HTTP GET request directly. Example syntax:\n\n```\n$ curl 'www.seed-server.com/unsafe_home.php?username=alice&Password=11'\n```\n\nPut the URL and parameters inside single quotes so the shell does not interpret `&`. If your injection string needs special characters, URL-encode them: a single quote is `%27`, a space is `%20`.\n\nThe flag for this level is the value shown in the **Email** field of the resulting profile.",
+      "solution": "```\n$ curl 'www.seed-server.com/unsafe_home.php?username=admin&Password=%27%20or%201=1%20--%20-'\n```\nThe `%27` is an encoded single quote and `%20` an encoded space, reproducing the `admin' or 1=1 -- -` payload through the URL.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "How do I avoid shell interpreting my payload?",
+          "content": "Wrap the whole URL in single quotes on the command line, and URL-encode special characters inside the payload itself (`%27` for `'`, `%20` for space).",
+          "hint_penalty": 0.5,
+          "order": 0
+        },
+        {
+          "title": "What payload do I send?",
+          "content": "Reuse the same bypass as Task 2.1, URL-encoded, as the `Password` parameter for username `admin`.",
+          "hint_penalty": 1.0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 2.5,
+      "variant_answers": true,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Task 2.3 - Appending a second SQL statement",
+      "level_type": "TRAINING_LEVEL",
+      "order": 5,
+      "estimated_duration": 10,
+      "minimal_possible_solve_time": null,
+      "answer": "multi-query disabled",
+      "answer_variable_name": null,
+      "content": "In SQL, a semicolon (`;`) separates two statements. Try to turn the login query into **two** statements, with the second one being an UPDATE or DELETE, by injecting a payload containing a `;`.\n\nYou will find that this does **not** work here, even though the query is otherwise vulnerable. There is a countermeasure preventing stacked queries on this kind of connection.\n\nIdentify this countermeasure (consult the SEED book / PHP MySQLi documentation) and submit its name as the flag.\n\nAccepted answer (case-insensitive): **multi-query disabled**",
+      "solution": "PHP's `mysqli::query()` only ever sends and executes a single statement to the server; it does not support stacked queries. Running several statements in one call requires the dedicated `mysqli::multi_query()` function, which this application does not use. This is what blocks the stacked-query attack here, independent of input sanitization.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "What did you try to inject?",
+          "content": "Try a payload such as `x'; UPDATE credential SET Salary=1 WHERE Name='Boby'; -- -` as the username.",
+          "hint_penalty": 1.0,
+          "order": 0
+        },
+        {
+          "title": "Why didn't it run two statements?",
+          "content": "Look up how PHP's mysqli `query()` function differs from `multi_query()`.",
+          "hint_penalty": 1.0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 2.0,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Task 3.1 - Modify your own salary",
+      "level_type": "TRAINING_LEVEL",
+      "order": 6,
+      "estimated_duration": 12,
+      "minimal_possible_solve_time": null,
+      "answer": null,
+      "answer_variable_name": "target_salary_self",
+      "content": "Log in to the Edit-Profile page as Alice (`seedalice` is the real password) and look at the backend query (`unsafe_edit_backend.php`):\n\n```php\n$sql = \"UPDATE credential SET nickname='$input_nickname',\n        email='$input_email', address='$input_address',\n        Password='$hashed_pwd', PhoneNumber='$input_phonenumber'\n        WHERE ID=$id;\";\n```\n\nEmployees are not authorized to change their `salary` column through this form, but one of the fields above is not sanitized. Use it to also update your own `Salary`.\n\nYour personal target is in `~/task3_targets.txt` on the seed host. Set your (Alice's) salary to **exactly** that value, then log back in (Task 1 query or the home page) to confirm it changed.\n\nThe flag is the target salary value itself.",
+      "solution": "Inject through the `nickname` (or any other unsanitized) field, for example:\n`nickname = x', Salary='<target>` \nso the resulting query becomes:\n`UPDATE credential SET nickname='x', Salary='<target>', email=...`",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Which field can I abuse?",
+          "content": "Any of the fields built into the UPDATE statement with no escaping (nickname, email, address, phone number) can be used to break out and add more columns to SET.",
+          "hint_penalty": 1.0,
+          "order": 0
+        },
+        {
+          "title": "What should I inject?",
+          "content": "Close the value with a quote, then add a comma and `Salary='<target>'`, for example: `x', Salary='<target>` as the nickname.",
+          "hint_penalty": 1.5,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 3.0,
+      "variant_answers": true,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Task 3.2 - Modify Boby's salary",
+      "level_type": "TRAINING_LEVEL",
+      "order": 7,
+      "estimated_duration": 10,
+      "minimal_possible_solve_time": null,
+      "answer": null,
+      "answer_variable_name": "target_salary_boby",
+      "content": "Repeat the Task 3.1 technique, but this time target **Boby's** row instead of your own (you are editing your own profile, but the injected SQL can reference any row with its own `WHERE`, or you can inject a second condition that overrides `ID=$id`).\n\nSet Boby's salary to the value given in `~/task3_targets.txt`.\n\nThe flag is that target salary value.",
+      "solution": "Inject so that the final WHERE clause targets Boby's row regardless of your own ID, for example by ending the statement with:\n`..., PhoneNumber='x' WHERE Name='Boby'; -- -`\nas one of the Edit-Profile fields, which overrides the original `WHERE ID=$id` clause.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "How do I target a row that isn't mine?",
+          "content": "Inject a complete replacement `WHERE` clause (for example `WHERE Name='Boby'`) and comment out the rest of the original query with `-- -`.",
+          "hint_penalty": 1.0,
+          "order": 0
+        },
+        {
+          "title": "Which field should carry the payload?",
+          "content": "Any of nickname / email / address / phone number works, as in Task 3.1.",
+          "hint_penalty": 1.0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 2.5,
+      "variant_answers": true,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Task 3.3 - Modify Boby's password",
+      "level_type": "TRAINING_LEVEL",
+      "order": 8,
+      "estimated_duration": 15,
+      "minimal_possible_solve_time": null,
+      "answer": null,
+      "answer_variable_name": "target_password_boby",
+      "content": "The database stores `SHA1(password)`, not the plaintext. Using the same injection technique as Task 3.2, set Boby's password to the value given in `~/task3_targets.txt`.\n\nRemember that `unsafe_edit_backend.php` already hashes whatever password value is submitted through the Edit-Profile form before building the query, so if you go through the form normally you do not need to hash it yourself.\n\nThen **log in as Boby** on the login page using this new password to confirm it worked.\n\nThe flag is the new password you set.",
+      "solution": "Easiest path: log in as Alice, open Edit Profile, and in the **Password** field itself submit Boby's target password - but add the injection in one of the *other* fields (nickname, email, address or phone) to redirect the `WHERE` clause to Boby's row, exactly as in Task 3.2. The legitimate password field is hashed normally by the PHP code, you do not need to hash it by hand.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Do I need to compute the SHA1 hash myself?",
+          "content": "No - submit the plaintext password through the form's Password field; the PHP code hashes it for you before the query runs.",
+          "hint_penalty": 1.0,
+          "order": 0
+        },
+        {
+          "title": "How do I still target Boby, not Alice?",
+          "content": "Inject the row-redirecting payload (WHERE Name='Boby'; -- -) in another field, exactly as in Task 3.2.",
+          "hint_penalty": 1.5,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 3.0,
+      "variant_answers": true,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Task 4 - Countermeasure: Prepared Statement",
+      "level_type": "TRAINING_LEVEL",
+      "order": 9,
+      "estimated_duration": 15,
+      "minimal_possible_solve_time": null,
+      "answer": "account information your provide does not exist",
+      "answer_variable_name": null,
+      "content": "Point your browser to `http://www.seed-server.com/defense/`. This page queries the database through `unsafe.php`, located on the seed host at `~/Labsetup/image_www/Code/defense/unsafe.php` (and inside the running container at `/var/www/SQL_Injection/defense/unsafe.php`).\n\nEdit `unsafe.php` so that the query uses a **prepared statement** instead of string concatenation, following this pattern:\n\n```php\n$stmt = $conn->prepare(\"SELECT ... FROM credential WHERE name = ? and Password = ?\");\n$stmt->bind_param(\"ss\", $input_uname, $hashed_pwd);\n$stmt->execute();\n```\n\nAfter editing the file, if you changed it inside the running container, restart Apache inside that container (`docker exec www-10.9.0.5 service apache2 restart`) for the change to take effect; if you changed it on the host, rebuild and restart the containers instead.\n\nVerify your fix by trying the Task 2.1 payload again on `/defense/`: it must now **fail to log in**, instead of bypassing authentication.\n\nThe flag for this level (same for every student) is the exact message this defended page shows after a failed login attempt.\n\nAccepted answer (case-insensitive): **account information your provide does not exist**",
+      "solution": "```php\n$stmt = $conn->prepare(\"SELECT id, name, eid, salary, birth, ssn, address, email, nickname, Password FROM credential WHERE name = ? and Password = ?\");\n$stmt->bind_param(\"ss\", $input_uname, $hashed_pwd);\n$stmt->execute();\n$result = $stmt->get_result();\n```\nWith the data bound as parameters instead of concatenated into the SQL text, an injection payload is treated as literal data and the query no longer matches any row, so the login simply fails.",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "What is the prepared-statement syntax?",
+          "content": "Replace the variables in the SQL string with `?` placeholders, then call `$conn->prepare()`, `$stmt->bind_param()` and `$stmt->execute()`.",
+          "hint_penalty": 1.0,
+          "order": 0
+        },
+        {
+          "title": "How do I apply the change?",
+          "content": "Edit the file either on the host (rebuild/restart the containers) or directly inside the running www container with nano, then restart Apache inside that container.",
+          "hint_penalty": 1.5,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 10,
+      "attachments": [],
+      "max_score": 3.0,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    }
+  ],
+  "estimated_duration": 92,
+  "variant_sandboxes": true
+}

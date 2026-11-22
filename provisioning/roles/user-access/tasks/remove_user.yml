@@ -1,0 +1,5 @@
+- name: remove user
+  user:
+    name: '{{ user_access_username }}'
+    state: absent
+    remove: yes
