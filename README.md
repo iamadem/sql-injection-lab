@@ -9,9 +9,9 @@ adapted as described below.
 
 ## What this scenario does
 
-- One **seed** host (image: your "Ubuntu 20.04 VM", flavor `m1.medium`,
-  `mgmt_user: ubuntu` - **check/adjust this**, see Assumptions below),
-  connected through a router to the internet.
+- One **seed** host (image `seed`, flavor `m1.medium`, `mgmt_user: ubuntu`
+  - confirmed against a working scenario on the same platform, the
+  `csrf-seedlab` topology), connected through a router to the internet.
 - Provisioning installs Docker, deploys the **official, unmodified SEED
   `Labsetup`** (bundled in `provisioning/roles/seed_lab/files/Labsetup/`,
   fetched from the public `seed-labs/seed-labs` GitHub repository), and
@@ -153,10 +153,9 @@ own subfolder here purely so it's versioned alongside everything else.
 
 ## Assumptions to double check
 
-- **Image name / mgmt_user**: `topology.yml` currently uses
-  `image: "Ubuntu 20.04 VM"` with `mgmt_user: ubuntu`, assuming a plain
-  cloud image with the default Ubuntu cloud-init account. If your image
-  catalog uses a different exact name or a different default account,
+- **Image name / mgmt_user**: `topology.yml` uses `image: seed` with
+  `mgmt_user: ubuntu`, matching a working `csrf-seedlab` scenario on the
+  same platform. If your catalog's SEED image is named differently,
   update both fields.
 - **Internet access during provisioning**: confirmed available. Docker,
   docker-compose and their apt dependencies, plus the Docker Hub base
