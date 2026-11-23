@@ -1,2 +1,0 @@
-- name: Reload SSH service
-  include_tasks: tasks/reload_ssh.yml

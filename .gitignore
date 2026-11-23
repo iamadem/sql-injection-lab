@@ -1,6 +1,9 @@
 # Ansible roles downloaded by ansible-galaxy (requirements.yml)
+provisioning/roles/user-access/
 provisioning/roles/sandbox-logging/
 provisioning/roles/sandbox-logging-*/
+provisioning/roles/chrony/
+provisioning/roles/hosts-aliases/
 
 # Local test artifacts
 *.retry
