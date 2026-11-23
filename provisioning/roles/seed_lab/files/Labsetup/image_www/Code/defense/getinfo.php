@@ -23,6 +23,7 @@
   </nav>
   <div class='container'>
   <h2>Information returned from the database</h2>
+  <?php if (isset($id)): ?>
   <ul>
     <li>ID:     <b><?=$id?></b></li> 
     <li>Name:   <b><?=$name?></b></li> 
@@ -30,6 +31,9 @@
     <li>Salary: <b><?=$salary?></b></li> 
     <lI>Social Security Number: <b><?=$ssn?></b></li>
   </ul>
+  <?php else: ?>
+  <p><b>No matching account found.</b></p>
+  <?php endif; ?>
   </div>
 </body>
 </html>

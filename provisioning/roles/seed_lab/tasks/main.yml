@@ -26,40 +26,6 @@
     enabled: true
     state: started
 
-- name: Check if upstream resolv.conf exists
-  stat:
-    path: /run/systemd/resolve/resolv.conf
-  register: upstream_resolv
-
-- name: Point /etc/resolv.conf directly to upstream resolv.conf (bypass 127.0.0.53 stub)
-  file:
-    src: /run/systemd/resolve/resolv.conf
-    dest: /etc/resolv.conf
-    state: link
-    force: true
-  when: upstream_resolv.stat.exists
-
-- name: Ensure Docker configuration directory exists
-  file:
-    path: /etc/docker
-    state: directory
-    mode: "0755"
-
-- name: Configure Docker daemon DNS and concurrency limits
-  copy:
-    dest: /etc/docker/daemon.json
-    mode: "0644"
-    content: |
-      {
-        "dns": ["1.1.1.1", "8.8.8.8"],
-        "max-concurrent-downloads": 2
-      }
-
-- name: Restart Docker to apply daemon configuration
-  systemd:
-    name: docker
-    state: restarted
-
 - name: Add student user to the docker group
   user:
     name: user
@@ -86,27 +52,21 @@
     group: user
     mode: "0755"
 
-- name: Pre-pull base Docker images with retries
-  shell: docker pull "{{ item }}"
-  loop:
-    - handsonsecurity/seed-server:apache-php
-    - mysql:8.0.22
-  register: docker_pull_result
-  until: docker_pull_result.rc == 0
-  retries: 5
-  delay: 10
-  changed_when: "'Downloaded newer image' in docker_pull_result.stdout or 'Pull complete' in docker_pull_result.stdout"
-
 - name: Build the lab containers (docker-compose build)
+  # Retried: pulling the mysql:8.0.22 base image is a large, multi-layer
+  # download and has been observed to fail with a mid-transfer TCP reset
+  # on some networks (transient blip / MTU mismatch through the router).
+  # Docker caches layers it already pulled, so a retry resumes quickly
+  # rather than starting the whole build over.
   shell: docker-compose build
   args:
     chdir: /home/user/Labsetup
   become: true
   become_user: user
-  register: build_result
-  until: build_result.rc == 0
-  retries: 3
-  delay: 10
+  register: compose_build_result
+  until: compose_build_result.rc == 0
+  retries: 4
+  delay: 20
 
 - name: Start the lab containers (docker-compose up -d)
   shell: docker-compose up -d
@@ -114,6 +74,10 @@
     chdir: /home/user/Labsetup
   become: true
   become_user: user
+  register: compose_up_result
+  until: compose_up_result.rc == 0
+  retries: 3
+  delay: 15
 
 # ---------------------------------------------------------------------------
 # 4. Wait for MySQL to be ready before touching the data

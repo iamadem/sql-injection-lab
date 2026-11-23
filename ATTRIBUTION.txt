@@ -7,9 +7,17 @@ This scenario adapts practical work (TP) content from:
   https://seedsecuritylabs.org / https://github.com/seed-labs/seed-labs
 
 The provisioning/roles/seed_lab/files/Labsetup/ folder bundled in this
-scenario is an unmodified copy of the lab's "Labsetup" folder from the
-public seed-labs/seed-labs GitHub repository
-(category-web/Web_SQL_Injection/Labsetup).
+scenario is a copy of the lab's "Labsetup" folder from the public
+seed-labs/seed-labs GitHub repository
+(category-web/Web_SQL_Injection/Labsetup), with ONE small modification:
+
+  image_www/Code/defense/getinfo.php now has an "else" branch that prints
+  "No matching account found." when the login query returns no row,
+  instead of silently printing blank fields. This was added only so that
+  Task 4 (prepared statement) has an unambiguous, checkable flag text.
+  image_www/Code/defense/unsafe.php - the file students actually edit for
+  that task - is untouched. Every other file in Labsetup/ is byte-for-byte
+  identical to the upstream repository.
 
 If you remix, transform, or build upon this material, this copyright
 notice must be left intact, or reproduced in a way that is reasonable to
