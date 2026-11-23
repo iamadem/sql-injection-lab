@@ -1,22 +1,49 @@
 ---
-# Provisioning for the SQL Injection Attack Lab (SEED Labs), single host.
-# No provisioning/requirements.yml is used: every role is included locally
-# under provisioning/roles/ so no Ansible Galaxy / GitHub download is
-# needed at provisioning time.
+# Provisioning for the SEED Lab "SQL Injection Attack" for CyberRangeCZ.
+#
+# The variables secret_task1, secret_task2a, secret_task2b, target_salary_self,
+# target_salary_boby, target_password_boby are generated per-sandbox by the platform
+# from ../variables.yml and passed as extra vars.
+# Default values below are provided as fallbacks for off-platform / local testing.
 
-- name: Configure the seed host
+# Common tools on all hosts (curl, net-tools, vim, nano...)
+- name: Configuring hosts
+  hosts: hosts
+  become: true
+  roles:
+    - hosts
+
+# Configure the seed machine (student account seed / dees + Docker + SQLi lab)
+- name: Configure seed
   hosts: seed
   become: true
   roles:
-    # Students use the standard SEED VM account (seed / dees), matching the
-    # credentials used throughout the SEED Labs documentation. user-access
-    # only (re)sets its password/SSH key; it does NOT grant sudo - the
-    # seed_lab role below explicitly strips any admin rights this account
-    # may already carry on the base image (sudo is public knowledge for
-    # this account, so leaving it would let any student become root).
     - role: user-access
       user_access_username: seed
       user_access_password: dees
       user_access_sudo: false
-
     - role: seed_lab
+      secret_task1: "{{ secret_task1 | default('AliceNick1') }}"
+      secret_task2a: "{{ secret_task2a | default('AdminNick2') }}"
+      secret_task2b: "{{ secret_task2b | default('AdminMail2') }}"
+      target_salary_self: "{{ target_salary_self | default(250000) }}"
+      target_salary_boby: "{{ target_salary_boby | default(500) }}"
+      target_password_boby: "{{ target_password_boby | default('PasswordBoby') }}"
+
+# Command logging (identical to Junior Hacker and SEED PRNG templates):
+# allows instructors to inspect student commands in the platform.
+- name: setup hosts logging roles
+  hosts:
+    - routers
+    - hosts
+  become: true
+  vars:
+    sandbox_name: sqli-seed-lab
+    central_syslog_ip: 78.128.251.179
+  roles:
+    - role: sandbox-logging
+      slf_destination_port: '{% if hostvars["man"] is defined -%} 514 {%- else -%} 515 {%- endif %}'
+      slf_destination: '{% if hostvars["man"] is defined -%} {{ hostvars["man"].ansible_host }} {%- else -%} {{ central_syslog_ip }} {%- endif %}'
+      slf_sandbox_id: "{{ global_sandbox_id | default(student_id) | default(0) }}"
+      slf_sandbox_name: '{{ global_sandbox_name | default(sandbox_name) }}'
+      slf_pool_id: '{{ global_pool_id | default(None) }}'

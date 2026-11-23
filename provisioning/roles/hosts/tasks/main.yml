@@ -1,0 +1,43 @@
+---
+# Common tools across all hosts (net-tools, curl, unzip, nano, vim, python3)
+# The SEED image already bundles most tools: apt is only called if any are missing.
+
+- name: Define common host packages
+  ansible.builtin.set_fact:
+    hosts_packages:
+      - net-tools
+      - curl
+      - unzip
+      - nano
+      - vim
+      - python3
+      - "{{ 'bsdextrautils'
+            if (ansible_distribution == 'Ubuntu' and ansible_distribution_major_version | int >= 22)
+            or (ansible_distribution == 'Debian' and ansible_distribution_major_version | int >= 11)
+            else 'bsdmainutils' }}"
+
+- name: List installed packages
+  ansible.builtin.command:
+    argv: [dpkg-query, -W, "-f=${db:Status-Abbrev} ${Package}\\n"]
+  register: hosts_dpkg
+  changed_when: false
+
+# 2nd letter of dpkg status = 'i': package is installed
+- name: Find missing packages
+  ansible.builtin.set_fact:
+    hosts_missing_packages: "{{ hosts_packages | difference(hosts_dpkg.stdout_lines | select('match', '^.i') | map('split') | map('last') | list) }}"
+
+- name: Install missing packages
+  when: hosts_missing_packages | length > 0
+  block:
+    - name: Update APT cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+        lock_timeout: 600
+
+    - name: Install packages
+      ansible.builtin.apt:
+        name: "{{ hosts_missing_packages }}"
+        state: present
+        lock_timeout: 600

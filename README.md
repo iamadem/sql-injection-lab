@@ -30,12 +30,10 @@ adapted as described below.
   normally-empty database columns, and writes a small file,
   `~/task3_targets.txt`, with three more per-sandbox target values. This
   is what makes every student's flags different (see "Anti-cheat" below).
-- No `provisioning/requirements.yml` is used. The only external role
-  used, `user-access`, is bundled locally under
-  `provisioning/roles/user-access/`, so no GitHub access is required at
-  provisioning time (even though it has been confirmed available on this
-  platform, via the `library-seed-prng` scenario's use of
-  `requirements.yml`).
+- Official CyberRange CZ roles (`user-access` and `sandbox-logging`)
+  are fetched automatically by the platform via
+  `provisioning/requirements.yml`, following the same architecture as
+  the `library-seed-prng` and `library-junior-hacker` scenarios.
 
 ## Levels and scoring (200 points = 20/20)
 
@@ -126,12 +124,11 @@ to be graded:
   report with screenshots. That has always been the real check on
   *method* - keep requiring it; treat the platform's automatic flags as
   a fast completion/partial-credit layer on top, not a replacement.
-- Command logging can be added (the `sandbox-logging` role, confirmed as
-  legitimate first-party CyberRange CZ infrastructure by its use in both
-  the original `library-junior-hacker` template and the
-  `library-seed-prng` scenario) so you can review each student's actual
-  command history and spot anyone who bypassed the web app. This isn't
-  included here yet - ask if you want it added.
+- Command logging is enabled (the `sandbox-logging` role, fetched via
+  `requirements.yml` like in the `library-junior-hacker` template and the
+  `library-seed-prng` scenario) so instructors can review each student's
+  actual command history in the platform and spot anyone who bypassed the
+  intended web application attack.
 
 ## Repository structure
 
@@ -140,10 +137,12 @@ sqli-seed-lab/
 ├── topology.yml              # Sandbox Definition: hosts/router/networks
 ├── variables.yml              # Sandbox Definition: APG variables
 ├── provisioning/               # Sandbox Definition: provisioning
-│   ├── playbook.yml
+│   ├── playbook.yml          # hosts -> user-access + seed_lab -> sandbox-logging
+│   ├── requirements.yml      # official CyberRange CZ roles (user-access, sandbox-logging)
 │   ├── host_vars/seed.yml
 │   └── roles/
-│       ├── user-access/        # local copy, no GitHub download needed
+│       ├── hosts/            # common host packages (net-tools, curl, vim, nano...)
+│       ├── user-access/      # user account setup
 │       └── seed_lab/
 │           ├── tasks/main.yml  # deploy, plant flags, strip admin rights
 │           └── files/Labsetup/ # official SEED lab files (1 file patched)

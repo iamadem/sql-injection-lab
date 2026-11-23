@@ -1,3 +1,7 @@
+# Ansible roles downloaded by ansible-galaxy (requirements.yml)
+provisioning/roles/sandbox-logging/
+provisioning/roles/sandbox-logging-*/
+
 # Local test artifacts
 *.retry
 .vagrant/
@@ -5,3 +9,4 @@ mysql_data/
 *.pyc
 __pycache__/
 .DS_Store
+
