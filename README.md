@@ -10,51 +10,59 @@ adapted as described below.
 ## What this scenario does
 
 - One **seed** host (image `seed`, flavor `m1.medium`, `mgmt_user: ubuntu`
-  - confirmed against a working scenario on the same platform, the
-  `csrf-seedlab` topology), connected through a router to the internet.
-- Provisioning installs Docker, deploys the **official, unmodified SEED
-  `Labsetup`** (bundled in `provisioning/roles/seed_lab/files/Labsetup/`,
-  fetched from the public `seed-labs/seed-labs` GitHub repository), and
-  runs `docker-compose build && up -d` to start the vulnerable web
-  application (`www-10.9.0.5`) and its MySQL database (`mysql-10.9.0.6`).
+  - confirmed against two working scenarios on the same platform, the
+  `csrf-seedlab` and `library-seed-prng` topologies), connected through a
+  router to the internet.
+- Students log in as **`seed` / `dees`**, the standard SEED VM account,
+  with its admin rights (sudo and similar) explicitly stripped by
+  provisioning - `docker` group membership is kept, since Tasks 1 and 4
+  require `docker exec` (see "Anti-cheat" below for why this matters).
+- Provisioning installs Docker, deploys the **SEED `Labsetup`** (bundled
+  in `provisioning/roles/seed_lab/files/Labsetup/`, originally fetched
+  from the public `seed-labs/seed-labs` GitHub repository; one file,
+  `defense/getinfo.php`, has one small documented addition - see
+  `ATTRIBUTION.txt`), and runs `docker-compose build && up -d` to start
+  the vulnerable web application (`www-10.9.0.5`) and its MySQL database
+  (`mysql-10.9.0.6`). The build/start steps retry automatically on
+  transient network failures (observed once: a mid-download TCP reset
+  pulling the `mysql:8.0.22` base image).
 - Provisioning then plants a **different secret per sandbox** into three
   normally-empty database columns, and writes a small file,
   `~/task3_targets.txt`, with three more per-sandbox target values. This
   is what makes every student's flags different (see "Anti-cheat" below).
-- No `provisioning/requirements.yml` is used. The four Ansible roles the
-  original template downloaded from GitHub (`user-access`, `chrony`,
-  `sandbox-logging`, `hosts-aliases`) are **not needed here**: only
-  `user-access` is used, and it is bundled locally under
-  `provisioning/roles/user-access/`. `chrony` and `sandbox-logging` were
-  dropped, as agreed.
+- No `provisioning/requirements.yml` is used. The only external role
+  used, `user-access`, is bundled locally under
+  `provisioning/roles/user-access/`, so no GitHub access is required at
+  provisioning time (even though it has been confirmed available on this
+  platform, via the `library-seed-prng` scenario's use of
+  `requirements.yml`).
 
-## Levels and scoring (20 points total)
+## Levels and scoring (200 points = 20/20)
 
-| # | Level | Type | Points | Flag |
+CyberRange CZ's backend only accepts **integer** scores (confirmed by the
+`library-seed-prng` scenario on this same platform). This definition
+therefore scores everything **x10**: 200 points total instead of 20, so
+that a 0.5-point hint penalty becomes an integer (5). Divide the final
+score by 10 to get the grade out of 20.
+
+| # | Level | Type | Points (x10) | Flag |
 |---|---|---|---|---|
 | 0 | Introduction | Info | - | - |
 | 1 | Get Access | Access | - | passkey `start` |
-| 2 | Task 1 - SQL basics | Training | 1.5 | unique per student |
-| 3 | Task 2.1 - SELECT injection (webpage) | Training | 2.5 | unique per student |
-| 4 | Task 2.2 - SELECT injection (curl) | Training | 2.5 | unique per student |
-| 5 | Task 2.3 - stacked queries / countermeasure | Training | 2.0 | same for all (conceptual answer) |
-| 6 | Task 3.1 - UPDATE injection, own salary | Training | 3.0 | unique per student |
-| 7 | Task 3.2 - UPDATE injection, Boby's salary | Training | 2.5 | unique per student |
-| 8 | Task 3.3 - UPDATE injection, Boby's password | Training | 3.0 | unique per student |
-| 9 | Task 4 - Prepared statement fix | Training | 3.0 | same for all (fixed error message) |
-| | **Total** | | **20.0** | |
+| 2 | Task 1 - SQL basics | Training | 15 | unique per student |
+| 3 | Task 2.1 - SELECT injection (webpage) | Training | 25 | unique per student |
+| 4 | Task 2.2 - SELECT injection (curl) | Training | 25 | unique per student |
+| 5 | Task 2.3 - stacked queries / countermeasure | Training | 20 | same for all (conceptual answer) |
+| 6 | Task 3.1 - UPDATE injection, own salary | Training | 30 | unique per student |
+| 7 | Task 3.2 - UPDATE injection, Boby's salary | Training | 25 | unique per student |
+| 8 | Task 3.3 - UPDATE injection, Boby's password | Training | 30 | unique per student |
+| 9 | Task 4 - Prepared statement fix | Training | 30 | same for all (fixed message) |
+| | **Total** | | **200** (= 20/20) | |
 
-Hint penalties are between **0.5 and 2 points**, set per hint in
-`training.json` (`hint_penalty` field). Revealing a level's full
-`solution` is also penalized (`solution_penalized: true`) on every
-training level except Task 1.
-
-**Check with your platform before import**: this definition uses decimal
-`max_score` and `hint_penalty` values (for example `1.5`, `0.5`). If your
-CyberRange CZ version rejects decimals in the JSON schema, the simplest
-fix is to multiply every `max_score` and `hint_penalty` by 5 (giving a
-total of 100 instead of 20) and divide the final score by 5 yourself when
-grading.
+Hint penalties are between **5 and 15 points** (0.5-1.5 on the /20
+scale), set per hint in `training.json` (`hint_penalty` field).
+Revealing a level's full `solution` is also penalized
+(`solution_penalized: true`) on every training level except Task 1.
 
 ## Anti-cheat: per-student flags (APG)
 
@@ -82,6 +90,49 @@ message) rather than data that can be planted per student. If you need
 those to vary too, tell me and I can add two more APG variables, for
 instance by appending a random marker to the error-page text.
 
+### Closing the seed/dees admin backdoor
+
+The `seed` image ships the standard SEED VM account, `seed` / `dees`,
+which is public, documented knowledge (anyone who has used a SEED VM
+before knows it) and is typically an administrator on the base image.
+Left alone, **any student could log in with those credentials and get
+root**, bypassing the whole exercise - reading the database directly,
+editing any file, etc. Provisioning now explicitly strips `sudo` and
+other admin-group memberships (`admin`, `wheel`, `adm`, `disk`, `lxd`,
+`libvirt`, `systemd-journal`) from that account, removes any matching
+`sudoers` rules, and asserts afterwards that `sudo -l -U seed` reports no
+rights - the provisioning run fails loudly if that assertion doesn't
+hold, rather than silently leaving a hole open.
+
+### A limitation this cannot fully close
+
+Tasks 1 and 4 of the official lab explicitly require `docker exec`
+access (into the mysql and www containers respectively), so the `seed`
+account keeps `docker` group membership. Being in the `docker` group is
+root-equivalent for the **entire host**, including both containers - so
+a student could, after Task 1, simply run
+`docker exec mysql-10.9.0.6 mysql -uroot -pdees sqllab_users -e "SELECT * FROM credential;"`
+and read every planted secret directly, skipping the intended web-based
+injection for Tasks 2 and 3 entirely on **their own** sandbox. Per-student
+unique values stop students from sharing answers with each other; they
+do not stop an individual student from shortcutting their own exercise
+this way, because the access the official lab itself grants in Task 1
+is the shortcut. There is no way to close this without breaking Task 1
+or Task 4 as specified in the PDF.
+
+Two mitigations, consistent with how the original lab was actually meant
+to be graded:
+- The PDF's own "Submission" section (section 5) requires a written
+  report with screenshots. That has always been the real check on
+  *method* - keep requiring it; treat the platform's automatic flags as
+  a fast completion/partial-credit layer on top, not a replacement.
+- Command logging can be added (the `sandbox-logging` role, confirmed as
+  legitimate first-party CyberRange CZ infrastructure by its use in both
+  the original `library-junior-hacker` template and the
+  `library-seed-prng` scenario) so you can review each student's actual
+  command history and spot anyone who bypassed the web app. This isn't
+  included here yet - ask if you want it added.
+
 ## Repository structure
 
 ```
@@ -94,8 +145,8 @@ sqli-seed-lab/
 │   └── roles/
 │       ├── user-access/        # local copy, no GitHub download needed
 │       └── seed_lab/
-│           ├── tasks/main.yml
-│           └── files/Labsetup/ # official, unmodified SEED lab files
+│           ├── tasks/main.yml  # deploy, plant flags, strip admin rights
+│           └── files/Labsetup/ # official SEED lab files (1 file patched)
 ├── training/
 │   └── training.json          # Training Definition, imported separately
 ├── README.md
@@ -147,16 +198,22 @@ own subfolder here purely so it's versioned alongside everything else.
    step 3, and open enrollment for your students.
 
 6. Before the real session, **allocate one sandbox yourself** and walk
-   through all levels once (fastest way to confirm the image name,
-   `mgmt_user`, Docker build time, and that decimal scores import
-   correctly - see "Assumptions to double check" below).
+   through all levels once (fastest way to confirm Docker build time,
+   that `seed`/`dees` really has no sudo left after provisioning, and
+   that Task 4's flag text matches - see "Assumptions to double check"
+   below).
 
 ## Assumptions to double check
 
 - **Image name / mgmt_user**: `topology.yml` uses `image: seed` with
-  `mgmt_user: ubuntu`, matching a working `csrf-seedlab` scenario on the
-  same platform. If your catalog's SEED image is named differently,
-  update both fields.
+  `mgmt_user: ubuntu`, matching two working scenarios on the same
+  platform (`csrf-seedlab` and `library-seed-prng`). If your catalog's
+  SEED image is named differently, update both fields.
+- **seed/dees not already locked**: if your image's `seed` account is
+  disabled, has a different password, or doesn't exist at all, the
+  `user-access` role will create/reset it as described - but double
+  check the hardening block in `seed_lab/tasks/main.yml` still finds and
+  strips the right groups on your actual image.
 - **Internet access during provisioning**: confirmed available. Docker,
   docker-compose and their apt dependencies, plus the Docker Hub base
   images the lab's own Dockerfiles pull (`mysql:8.0.22` and

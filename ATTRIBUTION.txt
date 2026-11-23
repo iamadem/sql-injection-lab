@@ -7,9 +7,13 @@ This scenario adapts practical work (TP) content from:
   https://seedsecuritylabs.org / https://github.com/seed-labs/seed-labs
 
 The provisioning/roles/seed_lab/files/Labsetup/ folder bundled in this
-scenario is a copy of the lab's "Labsetup" folder from the public
-seed-labs/seed-labs GitHub repository
-(category-web/Web_SQL_Injection/Labsetup), with ONE small modification:
+scenario is the course's own copy of the lab's "Labsetup" folder, as
+supplied by the instructor. It was checked against the public
+seed-labs/seed-labs GitHub repository (category-web/Web_SQL_Injection/
+Labsetup) and found to differ only cosmetically (a CSS color-name typo
+in two files, two PHP comment-wording differences) - no functional
+difference. It carries ONE small modification on top of the supplied
+files:
 
   image_www/Code/defense/getinfo.php now has an "else" branch that prints
   "No matching account found." when the login query returns no row,

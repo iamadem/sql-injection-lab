@@ -8,9 +8,15 @@
   hosts: seed
   become: true
   roles:
+    # Students use the standard SEED VM account (seed / dees), matching the
+    # credentials used throughout the SEED Labs documentation. user-access
+    # only (re)sets its password/SSH key; it does NOT grant sudo - the
+    # seed_lab role below explicitly strips any admin rights this account
+    # may already carry on the base image (sudo is public knowledge for
+    # this account, so leaving it would let any student become root).
     - role: user-access
-      user_access_username: user
-      user_access_password: Password123
-      user_access_sudo: true
+      user_access_username: seed
+      user_access_password: dees
+      user_access_sudo: false
 
     - role: seed_lab

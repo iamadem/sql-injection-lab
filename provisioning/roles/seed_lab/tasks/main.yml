@@ -27,8 +27,14 @@
     state: started
 
 - name: Add student user to the docker group
+  # NOTE: unlike a lab with no Docker component, the docker group is kept
+  # here on purpose - Task 1 requires `docker exec` into the mysql
+  # container, and Task 4 requires it into the www container. Being in
+  # the docker group is root-equivalent for the whole host; this is an
+  # inherent property of the official lab's own Task 1/4 instructions,
+  # not something this role can avoid without breaking those tasks.
   user:
-    name: user
+    name: seed
     groups: docker
     append: true
 
@@ -47,10 +53,13 @@
 - name: Copy the Labsetup folder to the student's home directory
   copy:
     src: Labsetup/
-    dest: /home/user/Labsetup/
-    owner: user
-    group: user
+    dest: /home/seed/Labsetup/
+    owner: seed
+    group: seed
     mode: "0755"
+    force: false   # never overwrite the student's own edits on re-provisioning
+                    # (this matters most for Task 4, where the student edits
+                    # unsafe.php in place)
 
 - name: Build the lab containers (docker-compose build)
   # Retried: pulling the mysql:8.0.22 base image is a large, multi-layer
@@ -60,9 +69,9 @@
   # rather than starting the whole build over.
   shell: docker-compose build
   args:
-    chdir: /home/user/Labsetup
+    chdir: /home/seed/Labsetup
   become: true
-  become_user: user
+  become_user: seed
   register: compose_build_result
   until: compose_build_result.rc == 0
   retries: 4
@@ -71,9 +80,9 @@
 - name: Start the lab containers (docker-compose up -d)
   shell: docker-compose up -d
   args:
-    chdir: /home/user/Labsetup
+    chdir: /home/seed/Labsetup
   become: true
-  become_user: user
+  become_user: seed
   register: compose_up_result
   until: compose_up_result.rc == 0
   retries: 3
@@ -94,6 +103,10 @@
 
 # ---------------------------------------------------------------------------
 # 5. Plant the per-sandbox secrets used as flags for Tasks 1 and 2
+#    no_log: true - these commands contain this sandbox's secret values;
+#    without it they would appear in plain text in the provisioning log
+#    (which gets pasted into tickets/chats for debugging more often than
+#    one would like).
 # ---------------------------------------------------------------------------
 - name: Plant Task 1 secret into Alice's NickName
   shell: >
@@ -101,6 +114,7 @@
     mysql -uroot -pdees sqllab_users -e
     "UPDATE credential SET NickName='{{ secret_task1 }}' WHERE Name='Alice';"
   changed_when: true
+  no_log: true
 
 - name: Plant Task 2.1 secret into Admin's NickName
   shell: >
@@ -108,6 +122,7 @@
     mysql -uroot -pdees sqllab_users -e
     "UPDATE credential SET NickName='{{ secret_task2a }}' WHERE Name='Admin';"
   changed_when: true
+  no_log: true
 
 - name: Plant Task 2.2 secret into Admin's Email
   shell: >
@@ -115,15 +130,16 @@
     mysql -uroot -pdees sqllab_users -e
     "UPDATE credential SET Email='{{ secret_task2b }}' WHERE Name='Admin';"
   changed_when: true
+  no_log: true
 
 # ---------------------------------------------------------------------------
 # 6. Write the per-sandbox targets for Task 3 (UPDATE-statement injection)
 # ---------------------------------------------------------------------------
 - name: Write the Task 3 target values for the student
   copy:
-    dest: /home/user/task3_targets.txt
-    owner: user
-    group: user
+    dest: /home/seed/task3_targets.txt
+    owner: seed
+    group: seed
     mode: "0644"
     content: |
       Task 3.1 - set Alice's (your own) salary to exactly: {{ target_salary_self }}
@@ -132,3 +148,69 @@
 
       These three values are unique to your sandbox. Submit each one as the
       answer to the matching level once you have made the change.
+  no_log: true
+
+# ---------------------------------------------------------------------------
+# 7. Anti-cheat hardening: strip admin rights from the seed/dees account.
+#    seed/dees is the standard, publicly documented SEED VM login. On the
+#    base "seed" image it is very likely already an administrator (sudo,
+#    and possibly already in the docker group from the image build). With
+#    a password every student (and anyone who has ever used a SEED VM)
+#    already knows, leaving sudo in place would let any student become
+#    root and read the database / files directly, bypassing the whole
+#    exercise. docker is intentionally kept (see step 1's note above).
+# ---------------------------------------------------------------------------
+- name: Collect local groups
+  ansible.builtin.getent:
+    database: group
+
+- name: Remove the seed account from privileged groups (docker intentionally kept)
+  ansible.builtin.command:
+    argv: [gpasswd, -d, seed, "{{ item }}"]
+  loop:
+    - sudo
+    - admin
+    - wheel
+    - adm
+    - disk
+    - lxd
+    - libvirt
+    - systemd-journal
+  when:
+    - item in ansible_facts.getent_group
+    - "'seed' in (ansible_facts.getent_group[item][2] | default('', true)).split(',')"
+  register: seed_group_cleanup
+  changed_when: true
+
+- name: Find sudoers drop-in files
+  ansible.builtin.find:
+    paths: /etc/sudoers.d
+  register: seed_sudoers_files
+
+- name: Remove any sudo rules naming the seed account
+  ansible.builtin.lineinfile:
+    path: "{{ item }}"
+    regexp: '^\s*seed\s'
+    state: absent
+    validate: /usr/sbin/visudo -cf %s
+  loop: "{{ ['/etc/sudoers'] + (seed_sudoers_files.files | map(attribute='path') | list) }}"
+  register: seed_sudoers_cleanup
+
+- name: List sudo rights of the seed account
+  ansible.builtin.command: "sudo -l -U seed"
+  environment:
+    LC_ALL: C
+    LANG: C
+    LANGUAGE: C
+  register: seed_sudo_rights
+  changed_when: false
+  failed_when: false
+
+- name: Assert the seed account has no sudo rights left
+  ansible.builtin.assert:
+    that:
+      - "'is not allowed to run sudo' in (seed_sudo_rights.stdout + seed_sudo_rights.stderr)"
+    fail_msg: >
+      seed still has sudo rights: {{ seed_sudo_rights.stdout }}
+      - check /etc/sudoers and /etc/sudoers.d manually.
+    quiet: true

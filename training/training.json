@@ -31,7 +31,7 @@
       "estimated_duration": 3,
       "minimal_possible_solve_time": null,
       "passkey": "start",
-      "cloud_content": "Connect to your sandbox, then submit **`start`**.\n\n### Sandbox access\n1. In the topology overview, right-click on **`seed`** and choose **Open GUI**, or connect over SSH as user **`user`** with password **`Password123`**.\n2. The web application and its MySQL database are already built and running as Docker containers on this machine (`docker-compose ps` inside `~/Labsetup` to check).\n3. The application is reachable at `http://www.seed-server.com` from inside the sandbox.\n4. Your personal targets for Task 3 are in `~/task3_targets.txt`.",
+      "cloud_content": "Connect to your sandbox, then submit **`start`**.\n\n### Sandbox access\n1. In the topology overview, right-click on **`seed`** and choose **Open GUI**, or connect over SSH as **`seed`** with password **`dees`** (the standard SEED VM account; it has no admin rights on this sandbox).\n2. The web application and its MySQL database are already built and running as Docker containers on this machine (`docker-compose ps` inside `~/Labsetup` to check).\n3. The application is reachable at `http://www.seed-server.com` from inside the sandbox.\n4. Your personal targets for Task 3 are in `~/task3_targets.txt`.",
       "local_content": "This sandbox has not been tested for use with local sandbox."
     },
     {
@@ -49,19 +49,19 @@
         {
           "title": "How do I connect to MySQL?",
           "content": "Get a shell on the MySQL container with `docker exec -it mysql-10.9.0.6 mysql -u root -pdees`.",
-          "hint_penalty": 0.5,
+          "hint_penalty": 5,
           "order": 0
         },
         {
           "title": "Which SQL statement do I need?",
           "content": "Use `SELECT * FROM credential WHERE Name='Alice';` after `USE sqllab_users;`.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 1.5,
+      "max_score": 15,
       "variant_answers": true,
       "reference_solution": [],
       "mitre_techniques": [],
@@ -83,19 +83,19 @@
         {
           "title": "Where is the vulnerability?",
           "content": "The password field is concatenated directly into the SQL string with no escaping - look at the WHERE clause.",
-          "hint_penalty": 0.5,
+          "hint_penalty": 5,
           "order": 0
         },
         {
           "title": "What should the password field contain?",
           "content": "Make the condition `Password='...'` always true, for example by injecting `' or 1=1 -- -`.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 2.5,
+      "max_score": 25,
       "variant_answers": true,
       "reference_solution": [],
       "mitre_techniques": [],
@@ -117,19 +117,19 @@
         {
           "title": "How do I avoid shell interpreting my payload?",
           "content": "Wrap the whole URL in single quotes on the command line, and URL-encode special characters inside the payload itself (`%27` for `'`, `%20` for space).",
-          "hint_penalty": 0.5,
+          "hint_penalty": 5,
           "order": 0
         },
         {
           "title": "What payload do I send?",
           "content": "Reuse the same bypass as Task 2.1, URL-encoded, as the `Password` parameter for username `admin`.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 2.5,
+      "max_score": 25,
       "variant_answers": true,
       "reference_solution": [],
       "mitre_techniques": [],
@@ -151,19 +151,19 @@
         {
           "title": "What did you try to inject?",
           "content": "Try a payload such as `x'; UPDATE credential SET Salary=1 WHERE Name='Boby'; -- -` as the username.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 0
         },
         {
           "title": "Why didn't it run two statements?",
           "content": "Look up how PHP's mysqli `query()` function differs from `multi_query()`.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 2.0,
+      "max_score": 20,
       "variant_answers": false,
       "reference_solution": [],
       "mitre_techniques": [],
@@ -185,19 +185,19 @@
         {
           "title": "Which field can I abuse?",
           "content": "Any of the fields built into the UPDATE statement with no escaping (nickname, email, address, phone number) can be used to break out and add more columns to SET.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 0
         },
         {
           "title": "What should I inject?",
           "content": "Close the value with a quote, then add a comma and `Salary='<target>'`, for example: `x', Salary='<target>` as the nickname.",
-          "hint_penalty": 1.5,
+          "hint_penalty": 15,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 3.0,
+      "max_score": 30,
       "variant_answers": true,
       "reference_solution": [],
       "mitre_techniques": [],
@@ -219,19 +219,19 @@
         {
           "title": "How do I target a row that isn't mine?",
           "content": "Inject a complete replacement `WHERE` clause (for example `WHERE Name='Boby'`) and comment out the rest of the original query with `-- -`.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 0
         },
         {
           "title": "Which field should carry the payload?",
           "content": "Any of nickname / email / address / phone number works, as in Task 3.1.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 2.5,
+      "max_score": 25,
       "variant_answers": true,
       "reference_solution": [],
       "mitre_techniques": [],
@@ -253,19 +253,19 @@
         {
           "title": "Do I need to compute the SHA1 hash myself?",
           "content": "No - submit the plaintext password through the form's Password field; the PHP code hashes it for you before the query runs.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 0
         },
         {
           "title": "How do I still target Boby, not Alice?",
           "content": "Inject the row-redirecting payload (WHERE Name='Boby'; -- -) in another field, exactly as in Task 3.2.",
-          "hint_penalty": 1.5,
+          "hint_penalty": 15,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 3.0,
+      "max_score": 30,
       "variant_answers": true,
       "reference_solution": [],
       "mitre_techniques": [],
@@ -287,19 +287,19 @@
         {
           "title": "What is the prepared-statement syntax?",
           "content": "Replace the variables in the SQL string with `?` placeholders, then call `$conn->prepare()`, `$stmt->bind_param()` and `$stmt->execute()`.",
-          "hint_penalty": 1.0,
+          "hint_penalty": 10,
           "order": 0
         },
         {
           "title": "How do I apply the change?",
           "content": "Edit the file either on the host (rebuild/restart the containers) or directly inside the running www container with nano, then restart Apache inside that container.",
-          "hint_penalty": 1.5,
+          "hint_penalty": 15,
           "order": 1
         }
       ],
       "incorrect_answer_limit": 10,
       "attachments": [],
-      "max_score": 3.0,
+      "max_score": 30,
       "variant_answers": false,
       "reference_solution": [],
       "mitre_techniques": [],
