@@ -22,7 +22,7 @@
       "order": 0,
       "estimated_duration": 2,
       "minimal_possible_solve_time": null,
-      "content": "# SQL Injection Attack Lab\n\nThis training is based on the **SEED Labs \"SQL Injection Attack Lab\"** (copyright (c) 2006-2020 Wenliang Du, CC BY-NC-SA 4.0), used here as the practical work (TP) of the System Security course.\n\nYou will attack a vulnerable Employee Management web application (`www.seed-server.com`) running in Docker containers on your sandbox, then fix the vulnerability using prepared statements.\n\n**Rules**\n- Every level has its own flag. Flags are unique to your sandbox: do not share them, and do not accept flags from another student.\n- Using a hint costs points (shown on each level). Viewing the solution also costs points on most levels.\n- The scenario is graded out of **20 points**.\n- This is an educational exercise. Do not use these techniques outside of this sandbox.\n"
+      "content": "# SQL Injection Attack Lab\n\nThis training is based on the **SEED Labs \"SQL Injection Attack Lab\"** (copyright (c) 2006-2020 Wenliang Du, CC BY-NC-SA 4.0), used here as the practical work (TP) of the System Security course.\n\nYou will attack a vulnerable Employee Management web application (`www.seed-server.com`) running in Docker containers on your sandbox, then fix the vulnerability using prepared statements.\n\n**Rules**\n- Every level has its own flag. Flags are unique to your sandbox and case-sensitive: do not share them, and do not accept flags from another student.\n- Using a hint costs points (shown on each level). Viewing the solution also costs points on all training levels.\n- The scenario is scored out of **200 points** (your grade out of 20 is `score / 10`).\n- This is an educational exercise. Do not use these techniques outside of this sandbox.\n"
     },
     {
       "title": "Get Access",
@@ -76,19 +76,19 @@
       "minimal_possible_solve_time": null,
       "answer": null,
       "answer_variable_name": "secret_task2a",
-      "content": "Open `http://www.seed-server.com` and look at the login page. The backend (`unsafe_home.php`) builds this query from your input:\n\n```php\n$sql = \"SELECT id, name, eid, salary, birth, ssn, address, email,\n        nickname, Password FROM credential\n        WHERE name='$input_uname' and Password='$hashed_pwd'\";\n```\n\nYou know the administrator's account name (`admin`) but not the password. Log in as `admin` **without knowing the password**, using SQL injection in the login form.\n\nThe flag for this level is the value shown in the **NickName** field of the resulting profile.",
-      "solution": "Username: `admin`\nPassword: `' or 1=1 -- -` (or `' OR '1'='1` as the password field)\n\nThis turns the query's WHERE clause into something that is always true for the `admin` row, bypassing the password check entirely.",
+      "content": "Open `http://www.seed-server.com` and look at the login page. The backend (`unsafe_home.php`) hashes the password with `sha1()` and builds this query from your input:\n\n```php\n$hashed_pwd = sha1($input_pwd);\n$sql = \"SELECT id, name, eid, salary, birth, ssn, address, email,\n        nickname, Password FROM credential\n        WHERE name='$input_uname' and Password='$hashed_pwd'\";\n```\n\nYou know the administrator's account name (`admin`) but not the password. Log in as `admin` **without knowing the password**, using SQL injection in the login form.\n\n**Important:** Logging in as `Admin` displays a table containing **all 6 employees** (starting with Alice at the top and Admin at the bottom). The flag for this level is the value shown in the **NickName** column of **Admin's row** specifically (not Alice's row).",
+      "solution": "Username: `admin' -- -` (or `admin' #`)\nPassword: `123` (any value)\n\nBecause `unsafe_home.php` passes `Password` through `sha1()`, injecting into the password field does not work. Injecting `admin' -- -` (with a space after `--`) or `admin' #` into the **Username** field comments out the `and Password=...` condition and returns only the `Admin` row. (Avoid `or 1=1`, which matches all rows and logs you in as Alice instead of Admin.) In the displayed table, read the **NickName** column of the **Admin** row.",
       "solution_penalized": true,
       "hints": [
         {
           "title": "Where is the vulnerability?",
-          "content": "The password field is concatenated directly into the SQL string with no escaping - look at the WHERE clause.",
+          "content": "The Password field is hashed with `sha1()` before reaching SQL, so it cannot break the query. Look at `$input_uname` (the **Username** field) — it is concatenated directly into the SQL string with no escaping.",
           "hint_penalty": 5,
           "order": 0
         },
         {
-          "title": "What should the password field contain?",
-          "content": "Make the condition `Password='...'` always true, for example by injecting `' or 1=1 -- -`.",
+          "title": "What should the Username field contain?",
+          "content": "Close the string after `admin` and comment out the rest of the `WHERE` clause in the **Username** field, for example: `admin' -- -` (note the trailing space after `--`) or `admin' #`. Put anything in Password, then read the **NickName** of the **Admin** row in the resulting table.",
           "hint_penalty": 10,
           "order": 1
         }
@@ -110,19 +110,19 @@
       "minimal_possible_solve_time": null,
       "answer": null,
       "answer_variable_name": "secret_task2b",
-      "content": "Repeat the Task 2.1 attack **without using the webpage**, using `curl` to send the HTTP GET request directly. Example syntax:\n\n```\n$ curl 'www.seed-server.com/unsafe_home.php?username=alice&Password=11'\n```\n\nPut the URL and parameters inside single quotes so the shell does not interpret `&`. If your injection string needs special characters, URL-encode them: a single quote is `%27`, a space is `%20`.\n\nThe flag for this level is the value shown in the **Email** field of the resulting profile.",
-      "solution": "```\n$ curl 'www.seed-server.com/unsafe_home.php?username=admin&Password=%27%20or%201=1%20--%20-'\n```\nThe `%27` is an encoded single quote and `%20` an encoded space, reproducing the `admin' or 1=1 -- -` payload through the URL.",
+      "content": "Repeat the Task 2.1 attack **without using the webpage**, using `curl` to send the HTTP GET request directly. Example syntax:\n\n```\n$ curl 'www.seed-server.com/unsafe_home.php?username=alice&Password=11'\n```\n\nPut the URL and parameters inside single quotes so the shell does not interpret `&`. If your injection string needs special characters, URL-encode them: a single quote is `%27`, a space is `%20`, and `#` is `%23`.\n\nThe flag for this level is the value shown in the **Email** column of **Admin's row** in the resulting HTML table.",
+      "solution": "```\n$ curl 'www.seed-server.com/unsafe_home.php?username=admin%27%20--%20-&Password=11'\n```\n(Or `username=admin%27%20%23&Password=11`.) The `%27` is an encoded single quote and `%20` an encoded space, reproducing the `admin' -- -` payload in the `username` parameter. Read the **Email** cell in the **Admin** row of the returned HTML table.",
       "solution_penalized": true,
       "hints": [
         {
           "title": "How do I avoid shell interpreting my payload?",
-          "content": "Wrap the whole URL in single quotes on the command line, and URL-encode special characters inside the payload itself (`%27` for `'`, `%20` for space).",
+          "content": "Wrap the whole URL in single quotes on the command line, and URL-encode special characters inside the payload itself (`%27` for `'`, `%20` for space, `%23` for `#`).",
           "hint_penalty": 5,
           "order": 0
         },
         {
           "title": "What payload do I send?",
-          "content": "Reuse the same bypass as Task 2.1, URL-encoded, as the `Password` parameter for username `admin`.",
+          "content": "Reuse the same `username` bypass as Task 2.1, URL-encoded as the `username` parameter (e.g. `username=admin%27%20--%20-&Password=11`).",
           "hint_penalty": 10,
           "order": 1
         }
@@ -213,18 +213,18 @@
       "answer": null,
       "answer_variable_name": "target_salary_boby",
       "content": "Repeat the Task 3.1 technique, but this time target **Boby's** row instead of your own (you are editing your own profile, but the injected SQL can reference any row with its own `WHERE`, or you can inject a second condition that overrides `ID=$id`).\n\nSet Boby's salary to the value given in `~/task3_targets.txt`.\n\nThe flag is that target salary value.",
-      "solution": "Inject so that the final WHERE clause targets Boby's row regardless of your own ID, for example by ending the statement with:\n`..., PhoneNumber='x' WHERE Name='Boby'; -- -`\nas one of the Edit-Profile fields, which overrides the original `WHERE ID=$id` clause.",
+      "solution": "Set `NickName` to `x', Salary='<target>` and `PhoneNumber` to `x' WHERE Name='Boby' -- -` (with **no** semicolon `;`, because `mysqli::query()` rejects multi-statement syntax).\n\nThis turns the query into:\n`UPDATE credential SET nickname='x', Salary='<target>', ..., PhoneNumber='x' WHERE Name='Boby' -- -' where ID=1;`",
       "solution_penalized": true,
       "hints": [
         {
           "title": "How do I target a row that isn't mine?",
-          "content": "Inject a complete replacement `WHERE` clause (for example `WHERE Name='Boby'`) and comment out the rest of the original query with `-- -`.",
+          "content": "Inject a replacement `WHERE` clause in `PhoneNumber` (for example `x' WHERE Name='Boby' -- -`) without a semicolon `;`, so the trailing `WHERE ID=$id` is commented out.",
           "hint_penalty": 10,
           "order": 0
         },
         {
           "title": "Which field should carry the payload?",
-          "content": "Any of nickname / email / address / phone number works, as in Task 3.1.",
+          "content": "Put `x', Salary='<target>` in `NickName` (as in Task 3.1) and the `WHERE Name='Boby' -- -` redirect in `PhoneNumber` (the last field in the query).",
           "hint_penalty": 10,
           "order": 1
         }
@@ -247,7 +247,7 @@
       "answer": null,
       "answer_variable_name": "target_password_boby",
       "content": "The database stores `SHA1(password)`, not the plaintext. Using the same injection technique as Task 3.2, set Boby's password to the value given in `~/task3_targets.txt`.\n\nRemember that `unsafe_edit_backend.php` already hashes whatever password value is submitted through the Edit-Profile form before building the query, so if you go through the form normally you do not need to hash it yourself.\n\nThen **log in as Boby** on the login page using this new password to confirm it worked.\n\nThe flag is the new password you set.",
-      "solution": "Easiest path: log in as Alice, open Edit Profile, and in the **Password** field itself submit Boby's target password - but add the injection in one of the *other* fields (nickname, email, address or phone) to redirect the `WHERE` clause to Boby's row, exactly as in Task 3.2. The legitimate password field is hashed normally by the PHP code, you do not need to hash it by hand.",
+      "solution": "Easiest path: log in as Alice, open Edit Profile, enter Boby's target password in the **Password** field (the PHP code hashes it with `sha1()` automatically), and put `x' WHERE Name='Boby' -- -` (with **no** semicolon `;`) in the **PhoneNumber** field. It must be `PhoneNumber` because `PhoneNumber` comes *after* `Password` in the `UPDATE` query — putting `-- -` in an earlier field would comment out the `Password` assignment.",
       "solution_penalized": true,
       "hints": [
         {
@@ -258,7 +258,7 @@
         },
         {
           "title": "How do I still target Boby, not Alice?",
-          "content": "Inject the row-redirecting payload (WHERE Name='Boby'; -- -) in another field, exactly as in Task 3.2.",
+          "content": "Inject the row-redirecting payload `x' WHERE Name='Boby' -- -` (without `;`) into the **PhoneNumber** field (which comes after `Password` in the query).",
           "hint_penalty": 15,
           "order": 1
         }
@@ -281,7 +281,7 @@
       "answer": "No matching account found.",
       "answer_variable_name": null,
       "content": "Point your browser to `http://www.seed-server.com/defense/`. This page queries the database through `unsafe.php`, located on the seed host at `~/Labsetup/image_www/Code/defense/unsafe.php` (and inside the running container at `/var/www/SQL_Injection/defense/unsafe.php`).\n\nEdit `unsafe.php` so that the query uses a **prepared statement** instead of string concatenation, following this pattern:\n\n```php\n$stmt = $conn->prepare(\"SELECT ... FROM credential WHERE name = ? and Password = ?\");\n$stmt->bind_param(\"ss\", $input_uname, $hashed_pwd);\n$stmt->execute();\n```\n\nAfter editing the file, if you changed it inside the running container, restart Apache inside that container (`docker exec www-10.9.0.5 service apache2 restart`) for the change to take effect; if you changed it on the host, rebuild and restart the containers instead.\n\nVerify your fix by trying the Task 2.1 payload again on `/defense/`: it must now **fail to log in**, instead of bypassing authentication.\n\nThe flag for this level (same for every student) is the exact message this defended page shows after a failed login attempt (one small, documented addition was made to `getinfo.php` only - never to `unsafe.php`, which you edit - so that a failed login prints a clear message instead of a blank page).\n\nAccepted answer (case-insensitive): **No matching account found.**",
-      "solution": "```php\n$stmt = $conn->prepare(\"SELECT id, name, eid, salary, birth, ssn, address, email, nickname, Password FROM credential WHERE name = ? and Password = ?\");\n$stmt->bind_param(\"ss\", $input_uname, $hashed_pwd);\n$stmt->execute();\n$result = $stmt->get_result();\n```\nWith the data bound as parameters instead of concatenated into the SQL text, an injection payload is treated as literal data and the query no longer matches any row. `getinfo.php` then shows \"No matching account found.\" - the else branch added for this exercise - instead of printing blank fields.",
+      "solution": "```php\n$stmt = $conn->prepare(\"SELECT id, name, eid, salary, ssn FROM credential WHERE name = ? and Password = ?\");\n$stmt->bind_param(\"ss\", $input_uname, $hashed_pwd);\n$stmt->execute();\n$result = $stmt->get_result();\nif ($result->num_rows > 0) {\n  $firstrow = $result->fetch_assoc();\n  $id     = $firstrow[\"id\"];\n  $name   = $firstrow[\"name\"];\n  $eid    = $firstrow[\"eid\"];\n  $salary = $firstrow[\"salary\"];\n  $ssn    = $firstrow[\"ssn\"];\n}\n$stmt->close();\n```\nWith the data bound as parameters instead of concatenated into the SQL text, an injection payload is treated as literal data and the query no longer matches any row. `getinfo.php` then shows \"No matching account found.\" instead of returning an employee profile.",
       "solution_penalized": true,
       "hints": [
         {

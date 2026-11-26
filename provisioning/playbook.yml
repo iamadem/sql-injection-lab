@@ -23,12 +23,6 @@
       user_access_password: dees
       user_access_sudo: false
     - role: seed_lab
-      secret_task1: "{{ secret_task1 | default('AliceNick1') }}"
-      secret_task2a: "{{ secret_task2a | default('AdminNick2') }}"
-      secret_task2b: "{{ secret_task2b | default('AdminMail2') }}"
-      target_salary_self: "{{ target_salary_self | default(250000) }}"
-      target_salary_boby: "{{ target_salary_boby | default(500) }}"
-      target_password_boby: "{{ target_password_boby | default('PasswordBoby') }}"
 
 # Command logging (identical to Junior Hacker and SEED PRNG templates):
 # allows instructors to inspect student commands in the platform.

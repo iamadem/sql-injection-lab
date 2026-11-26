@@ -1,0 +1,10 @@
+---
+# Fallback defaults for off-platform / local testing only.
+# When deployed in CyberRangeCZ, APG extra vars override these automatically.
+
+secret_task1: "AliceNick1"
+secret_task2a: "AdminNick2"
+secret_task2b: "AdminMail2"
+target_salary_self: 250000
+target_salary_boby: 500
+target_password_boby: "PasswordBoby"

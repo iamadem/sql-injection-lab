@@ -44,6 +44,7 @@
 - name: Map www.seed-server.com to the web container
   lineinfile:
     path: /etc/hosts
+    regexp: '\bwww\.seed-server\.com\b'
     line: "10.9.0.5 www.seed-server.com"
     create: true
 
